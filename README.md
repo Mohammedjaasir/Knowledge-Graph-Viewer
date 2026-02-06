@@ -7,7 +7,10 @@
 ## 🌟 Live Demo
 
 
-https://github.com/user-attachments/assets/0f1e9628-ea8d-4651-8bdd-d8cb0fb97340
+
+https://github.com/user-attachments/assets/2f16e68e-ed67-430a-abcf-ac3d465efd2c
+
+
 
 
 - **Interactive Knowledge Graph**: Explore 544 people and their connections from Lenny's Podcast
