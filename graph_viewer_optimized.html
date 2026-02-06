@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LennyHub Knowledge Graph Explorer (Optimized)</title>
+    <script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: white;
+            border-right: 2px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .sidebar-header h1 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .search-box {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .stats-section {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .stat-card {
+            background: #f7fafc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .controls-section {
+            padding: 15px;
+        }
+
+        .control-btn {
+            width: 100%;
+            padding: 12px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #f7fafc;
+            border-color: #cbd5e0;
+        }
+
+        .control-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .toolbar {
+            padding: 15px 20px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toolbar-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            padding: 8px 15px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: #f7fafc;
+            border-color: #cbd5e0;
+        }
+
+        #graph-container {
+            flex: 1;
+            background: white;
+            position: relative;
+        }
+
+        #network {
+            width: 100%;
+            height: 100%;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 1001;
+        }
+
+        .node-details {
+            padding: 15px;
+            border-top: 1px solid #e2e8f0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .node-details h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+
+        .detail-row {
+            margin-bottom: 12px;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 13px;
+            color: #2d3748;
+            line-height: 1.5;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>📊 Knowledge Graph</h1>
+                <p>LennyHub RAG Explorer</p>
+            </div>
+
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="🔍 Search entities...">
+            </div>
+
+            <div class="stats-section">
+                <div class="stat-card">
+                    <div class="stat-label">Total Nodes</div>
+                    <div class="stat-value" id="total-nodes">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Edges</div>
+                    <div class="stat-value" id="total-edges">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Visible Nodes</div>
+                    <div class="stat-value" id="visible-nodes">-</div>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <button class="control-btn" id="physics-toggle">⚡ Toggle Physics</button>
+                <button class="control-btn" id="fit-btn">🎯 Fit View</button>
+                <button class="control-btn" id="reset-btn">🔄 Reset</button>
+            </div>
+
+            <div class="node-details" id="node-details" style="display: none;">
+                <h3>Node Details</h3>
+                <div id="details-content"></div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="toolbar">
+                <div><strong id="status-text">Loading...</strong></div>
+                <div class="toolbar-buttons">
+                    <button class="icon-btn" id="zoom-in">Zoom In</button>
+                    <button class="icon-btn" id="zoom-out">Zoom Out</button>
+                </div>
+            </div>
+
+            <div id="graph-container">
+                <div class="loading" id="loading">
+                    <div class="loading-spinner"></div>
+                    <p><strong>Loading Knowledge Graph...</strong></p>
+                    <p style="font-size: 13px; color: #718096; margin-top: 8px;">This may take a moment</p>
+                </div>
+                <div id="network"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let graphData = null;
+        let network = null;
+        let allNodes = [];
+        let allEdges = [];
+        let physicsEnabled = false;
+
+        const colorScheme = {
+            'person': '#e74c3c',
+            'organization': '#3498db',
+            'concept': '#9b59b6',
+            'method': '#f39c12',
+            'product': '#1abc9c',
+            'location': '#e67e22',
+            'framework': '#16a085',
+            'tool': '#2980b9',
+            'event': '#8e44ad',
+            'strategy': '#27ae60',
+            'default': '#95a5a6'
+        };
+
+        // Load graph data
+        async function loadGraph() {
+            try {
+                console.log('Fetching graph data...');
+                const response = await fetch('graph_data.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                graphData = await response.json();
+                console.log('Graph data loaded:', graphData);
+
+                allNodes = graphData.nodes || [];
+                allEdges = graphData.edges || [];
+
+                console.log(`Loaded ${allNodes.length} nodes and ${allEdges.length} edges`);
+
+                document.getElementById('total-nodes').textContent = allNodes.length.toLocaleString();
+                document.getElementById('total-edges').textContent = allEdges.length.toLocaleString();
+                document.getElementById('visible-nodes').textContent = allNodes.length.toLocaleString();
+
+                renderGraph();
+            } catch (error) {
+                console.error('Error loading graph:', error);
+                document.getElementById('loading').innerHTML =
+                    `<div class="error-message">❌ Error loading graph data: ${error.message}</div>`;
+            }
+        }
+
+        function renderGraph() {
+            console.log('Rendering graph...');
+            const container = document.getElementById('network');
+
+            // For large graphs (>1000 nodes), disable physics by default
+            physicsEnabled = allNodes.length <= 1000;
+            console.log(`Graph size: ${allNodes.length} nodes - Physics ${physicsEnabled ? 'enabled' : 'disabled'}`);
+
+            // Prepare nodes
+            const visNodes = allNodes.map(node => {
+                const color = colorScheme[node.entity_type] || colorScheme.default;
+                return {
+                    id: node.id,
+                    label: node.label || node.id,
+                    title: node.title || node.label || node.id,
+                    color: {
+                        background: color,
+                        border: color,
+                        highlight: {
+                            background: color,
+                            border: '#2d3748'
+                        }
+                    },
+                    font: { size: 14, color: '#2d3748' },
+                    _data: node // Store original data
+                };
+            });
+
+            // Prepare edges
+            const visEdges = allEdges.map(edge => ({
+                from: edge.from,
+                to: edge.to,
+                value: edge.value || 1,
+                title: edge.title || '',
+                color: { color: '#cbd5e0', highlight: '#667eea' }
+            }));
+
+            const data = {
+                nodes: new vis.DataSet(visNodes),
+                edges: new vis.DataSet(visEdges)
+            };
+
+            const options = {
+                nodes: {
+                    shape: 'dot',
+                    size: 10,
+                    borderWidth: 2,
+                    font: { size: 12 }
+                },
+                edges: {
+                    width: 1,
+                    color: { color: '#cbd5e0' },
+                    smooth: false // Disable for performance
+                },
+                physics: {
+                    enabled: physicsEnabled,
+                    stabilization: {
+                        enabled: true,
+                        iterations: 50,
+                        updateInterval: 10
+                    },
+                    barnesHut: {
+                        gravitationalConstant: -10000,
+                        centralGravity: 0.1,
+                        springLength: 150,
+                        springConstant: 0.01,
+                        damping: 0.09,
+                        avoidOverlap: 0.1
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    hideEdgesOnDrag: true,
+                    hideEdgesOnZoom: allNodes.length > 2000
+                },
+                layout: {
+                    improvedLayout: false // Much faster for large graphs
+                }
+            };
+
+            console.log('Creating vis.Network...');
+            network = new vis.Network(container, data, options);
+
+            // Update button state
+            const physicsBtn = document.getElementById('physics-toggle');
+            physicsBtn.classList.toggle('active', physicsEnabled);
+
+            // Event listeners
+            network.on('click', function(params) {
+                if (params.nodes.length > 0) {
+                    showNodeDetails(params.nodes[0]);
+                }
+            });
+
+            network.once('stabilizationIterationsDone', function() {
+                console.log('Stabilization complete');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('status-text').textContent = 'Graph Loaded';
+
+                // Fit the network
+                network.fit();
+            });
+
+            // If physics disabled, hide loading immediately
+            if (!physicsEnabled) {
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('status-text').textContent = 'Graph Loaded (Physics Disabled)';
+                    network.fit();
+                }, 1000);
+            }
+
+            console.log('Graph rendering complete');
+        }
+
+        function showNodeDetails(nodeId) {
+            const nodes = network.body.data.nodes;
+            const node = nodes.get(nodeId);
+
+            if (node && node._data) {
+                const data = node._data;
+                const detailsHtml = `
+                    <div class="detail-row">
+                        <div class="detail-label">Entity</div>
+                        <div class="detail-value"><strong>${data.label}</strong></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Type</div>
+                        <div class="detail-value"><span class="badge">${data.entity_type}</span></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Description</div>
+                        <div class="detail-value">${data.description ? data.description.substring(0, 300) + '...' : 'No description'}</div>
+                    </div>
+                    ${data.file_path ? `
+                    <div class="detail-row">
+                        <div class="detail-label">Source</div>
+                        <div class="detail-value">${data.file_path}</div>
+                    </div>
+                    ` : ''}
+                `;
+
+                document.getElementById('details-content').innerHTML = detailsHtml;
+                document.getElementById('node-details').style.display = 'block';
+
+                // Highlight the node
+                network.selectNodes([nodeId]);
+            }
+        }
+
+        // Search functionality
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+
+            if (searchTerm.length < 2) return;
+
+            const matchingNodes = allNodes.filter(node =>
+                (node.label || '').toLowerCase().includes(searchTerm) ||
+                (node.description || '').toLowerCase().includes(searchTerm)
+            );
+
+            if (matchingNodes.length > 0) {
+                const nodeIds = matchingNodes.map(n => n.id);
+                network.selectNodes(nodeIds);
+                network.focus(nodeIds[0], {
+                    scale: 1.5,
+                    animation: true
+                });
+            }
+        });
+
+        // Controls
+        document.getElementById('physics-toggle').addEventListener('click', function() {
+            physicsEnabled = !physicsEnabled;
+            network.setOptions({ physics: { enabled: physicsEnabled } });
+            this.classList.toggle('active', physicsEnabled);
+            console.log('Physics:', physicsEnabled ? 'enabled' : 'disabled');
+        });
+
+        document.getElementById('fit-btn').addEventListener('click', function() {
+            network.fit({ animation: true });
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            network.fit();
+            network.unselectAll();
+            document.getElementById('node-details').style.display = 'none';
+            document.getElementById('search-input').value = '';
+        });
+
+        document.getElementById('zoom-in').addEventListener('click', function() {
+            const scale = network.getScale();
+            network.moveTo({ scale: scale * 1.2, animation: true });
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', function() {
+            const scale = network.getScale();
+            network.moveTo({ scale: scale * 0.8, animation: true });
+        });
+
+        // Load on page load
+        window.addEventListener('load', loadGraph);
+    </script>
+</body>
+</html>

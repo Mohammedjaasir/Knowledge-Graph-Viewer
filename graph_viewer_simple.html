@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LennyHub Network - Top Connectors</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Mona+Sans:wght@400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: #e2e8f0;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #1e293b;
+            border-color: #667eea;
+        }
+
+        .node-info {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .node-info h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .info-row {
+            margin-bottom: 10px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+
+        .info-value {
+            font-size: 13px;
+            color: #e2e8f0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #667eea;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .main-content {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            padding: 15px 20px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toolbar-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        #graph-container {
+            flex: 1;
+            position: relative;
+            background: #0f172a;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: #1e293b;
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #334155;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #ef4444;
+            padding: 20px;
+            margin: 20px;
+            background: #1e293b;
+            border: 1px solid #ef4444;
+            border-radius: 6px;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .legend-item:hover {
+            background: #0f172a;
+        }
+
+        .legend-item.non-clickable {
+            cursor: default;
+        }
+
+        .legend-item.non-clickable:hover {
+            background: transparent;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            pointer-events: none;
+            font-size: 12px;
+            display: none;
+            max-width: 300px;
+            z-index: 1000;
+            font-family: 'Mona Sans', sans-serif;
+        }
+
+        .instructions {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .instructions ul {
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+
+        .instructions li {
+            margin-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="header">
+                <h1>Lenny's Network</h1>
+                <p>People connections from the podcast</p>
+            </div>
+
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Search people...">
+                <div id="search-results" style="margin-top: 10px; font-size: 12px; color: #94a3b8; display: none;"></div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">Nodes</div>
+                    <div class="stat-value" id="node-count">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Links</div>
+                    <div class="stat-value" id="edge-count">-</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn" id="reset-btn">Reset View</button>
+                <button class="btn" id="restart-sim">Restart Simulation</button>
+            </div>
+
+            <div class="instructions">
+                <strong>Controls:</strong>
+                <ul>
+                    <li>All names are visible</li>
+                    <li>Drag nodes to move them</li>
+                    <li>Scroll to zoom in/out</li>
+                    <li>Click node for details</li>
+                    <li>Double-click to focus</li>
+                    <li>Search to filter & highlight</li>
+                </ul>
+            </div>
+
+            <div class="node-info" id="node-info">
+                <h3>Node Details</h3>
+                <div id="node-details"></div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="toolbar">
+                <div id="status">Loading graph data...</div>
+                <div class="toolbar-buttons">
+                    <button class="btn" id="zoom-in">Zoom +</button>
+                    <button class="btn" id="zoom-out">Zoom -</button>
+                </div>
+            </div>
+
+            <div id="graph-container">
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p><strong>Loading Knowledge Graph...</strong></p>
+                    <p style="color: #94a3b8; margin-top: 5px;">This may take a moment</p>
+                </div>
+                <svg id="graph"></svg>
+                <div class="tooltip" id="tooltip"></div>
+            </div>
+
+            <div class="legend">
+                <strong style="margin-bottom: 10px; display: block;">Top Connectors</strong>
+                <small style="color: #94a3b8; font-size: 10px; display: block; margin-bottom: 8px;">Click to focus</small>
+                <div class="legend-item" data-person-id="Lenny Rachitsky">
+                    <div class="legend-color" style="background: #fbbf24; border: 2px solid #fbbf24;"></div>
+                    <span style="color: #fbbf24; font-size: 11px;">Lenny Rachitsky (292)</span>
+                </div>
+                <div class="legend-item" data-person-id="Bob Moesta">
+                    <div class="legend-color" style="background: #f59e0b; border: 2px solid #fbbf24;"></div>
+                    <span style="font-size: 11px;">Bob Moesta (98)</span>
+                </div>
+                <div class="legend-item" data-person-id="April Dunford">
+                    <div class="legend-color" style="background: #fb923c; border: 2px solid #fbbf24;"></div>
+                    <span style="font-size: 11px;">April Dunford (85)</span>
+                </div>
+                <div class="legend-item" data-person-id="Arielle Jackson">
+                    <div class="legend-color" style="background: #f97316; border: 2px solid #fbbf24;"></div>
+                    <span style="font-size: 11px;">Arielle Jackson (82)</span>
+                </div>
+                <div class="legend-item" data-person-id="Andrew Wilkinson">
+                    <div class="legend-color" style="background: #ef4444; border: 2px solid #fbbf24;"></div>
+                    <span style="font-size: 11px;">Andrew Wilkinson (78)</span>
+                </div>
+                <div class="legend-item non-clickable" style="margin-top: 10px;">
+                    <div class="legend-color" style="background: #ef4444"></div>
+                    <span style="font-size: 11px; color: #94a3b8;">Other people</span>
+                </div>
+                <p style="font-size: 11px; color: #94a3b8; margin-top: 10px;">
+                    544 people total
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Color scheme
+        const colorMap = {
+            'person': '#ef4444',
+            'organization': '#3b82f6',
+            'concept': '#8b5cf6',
+            'method': '#f59e0b',
+            'product': '#10b981',
+            'location': '#ec4899',
+            'framework': '#14b8a6',
+            'tool': '#06b6d4',
+            'event': '#a855f7',
+            'strategy': '#22c55e',
+            'platform': '#3b82f6',
+            'default': '#6b7280'
+        };
+
+        // Top 5 most connected people (excluding "Lenny" since it's the same as Lenny Rachitsky)
+        const topConnectors = [
+            { id: 'Lenny Rachitsky', connections: 292, rank: 1 },
+            { id: 'Bob Moesta', connections: 98, rank: 2 },
+            { id: 'April Dunford', connections: 85, rank: 3 },
+            { id: 'Arielle Jackson', connections: 82, rank: 4 },
+            { id: 'Andrew Wilkinson', connections: 78, rank: 5 }
+        ];
+
+        function getNodeSize(node) {
+            const topNode = topConnectors.find(t => t.id === node.id || t.id === node.label);
+            if (!topNode) return 10; // Default size
+
+            // Size based on rank
+            const sizes = { 1: 18, 2: 15, 3: 14, 4: 13, 5: 12 };
+            return sizes[topNode.rank] || 10;
+        }
+
+        function getNodeColor(node) {
+            const topNode = topConnectors.find(t => t.id === node.id || t.id === node.label);
+            if (!topNode) return colorMap[node.type] || colorMap.default;
+
+            // Gold gradient for top connectors
+            const colors = {
+                1: '#fbbf24', // Gold
+                2: '#f59e0b', // Amber
+                3: '#fb923c', // Orange
+                4: '#f97316', // Deep orange
+                5: '#ef4444'  // Red
+            };
+            return colors[topNode.rank];
+        }
+
+        function isTopConnector(node) {
+            return topConnectors.some(t => t.id === node.id || t.id === node.label);
+        }
+
+        let graphData = null;
+        let simulation = null;
+        let svg = null;
+        let g = null;
+        let zoom = null;
+        let nodes = [];
+        let links = [];
+
+        // Load graph data
+        async function loadGraph() {
+            try {
+                const response = await fetch('graph_data.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load graph data: ${response.status} ${response.statusText}`);
+                }
+
+                graphData = await response.json();
+
+                if (!graphData.nodes || !graphData.edges) {
+                    throw new Error('Invalid graph data format');
+                }
+
+                // Filter to show only person entities
+                const allNodes = graphData.nodes.map(n => ({
+                    id: n.id,
+                    label: n.label || n.id,
+                    type: n.entity_type || 'default',
+                    description: n.description || '',
+                    file_path: n.file_path || '',
+                    ...n
+                }));
+
+                // Only include person nodes
+                nodes = allNodes.filter(n => n.type === 'person');
+
+                // Create a set of person node IDs for quick lookup
+                const personIds = new Set(nodes.map(n => n.id));
+
+                // Only include links between person nodes
+                const allEdges = graphData.edges;
+                links = allEdges
+                    .filter(e => personIds.has(e.from) && personIds.has(e.to))
+                    .map(e => ({ source: e.from, target: e.to }));
+
+                document.getElementById('node-count').textContent = nodes.length;
+                document.getElementById('edge-count').textContent = links.length;
+                document.getElementById('status').textContent = `Showing ${nodes.length} people • ${links.length} connections`;
+
+                document.getElementById('loading').style.display = 'none';
+
+                renderGraph();
+
+                // Setup legend click handlers
+                setupLegendClicks();
+
+                // Focus on Lenny Rachitsky after graph renders
+                setTimeout(() => {
+                    const lenny = nodes.find(n => n.id === 'Lenny Rachitsky' || n.label === 'Lenny Rachitsky');
+                    if (lenny) {
+                        console.log('Centering graph on Lenny Rachitsky');
+                        focusNode(lenny);
+                        showNodeDetails(lenny);
+                    }
+                }, 2000); // Wait 2 seconds for initial layout
+            } catch (error) {
+                console.error('Error loading graph:', error);
+                document.getElementById('loading').innerHTML =
+                    `<div class="error">
+                        <strong>Error Loading Graph</strong><br>
+                        ${error.message}<br><br>
+                        <small>Make sure to serve this file via HTTP (not file://).<br>
+                        Run: <code>python -m http.server 8000</code><br>
+                        Then open: <code>http://localhost:8000/graph_viewer_simple.html</code></small>
+                    </div>`;
+            }
+        }
+
+        function renderGraph() {
+            const container = document.getElementById('graph-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Create SVG
+            svg = d3.select('#graph')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Add zoom behavior
+            zoom = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+
+            // Create container group
+            g = svg.append('g');
+
+            // Find Lenny Rachitsky and pin him to the center
+            const lenny = nodes.find(n => n.id === 'Lenny Rachitsky' || n.label === 'Lenny Rachitsky');
+            if (lenny) {
+                lenny.fx = width / 2;
+                lenny.fy = height / 2;
+                console.log('Pinning Lenny Rachitsky to center of graph');
+            }
+
+            // Create force simulation
+            simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(150))
+                .force('charge', d3.forceManyBody().strength(-500))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => getNodeSize(d) + 40)); // More space for labels and large nodes
+
+            // Create links
+            const link = g.append('g')
+                .selectAll('line')
+                .data(links)
+                .join('line')
+                .attr('stroke', '#334155')
+                .attr('stroke-width', 1)
+                .attr('stroke-opacity', 0.6);
+
+            // Create nodes
+            const node = g.append('g')
+                .selectAll('circle')
+                .data(nodes)
+                .join('circle')
+                .attr('r', d => getNodeSize(d))
+                .attr('fill', d => getNodeColor(d))
+                .attr('stroke', d => {
+                    // Gold border for top connectors
+                    if (isTopConnector(d)) return '#fbbf24';
+                    return '#1e293b';
+                })
+                .attr('stroke-width', d => {
+                    // Thicker border for top connectors
+                    if (isTopConnector(d)) return 3.5;
+                    return 2.5;
+                })
+                .call(drag(simulation))
+                .on('click', (event, d) => showNodeDetails(d))
+                .on('dblclick', (event, d) => focusNode(d))
+                .on('mouseover', (event, d) => {
+                    const baseSize = getNodeSize(d);
+                    d3.select(event.target).attr('r', baseSize + 4);
+                    showTooltip(event, d);
+                })
+                .on('mouseout', (event, d) => {
+                    d3.select(event.target).attr('r', getNodeSize(d));
+                    hideTooltip();
+                });
+
+            // Create labels for all nodes
+            const label = g.append('g')
+                .selectAll('text')
+                .data(nodes) // Show labels for ALL nodes
+                .join('text')
+                .text(d => {
+                    const topNode = topConnectors.find(t => t.id === d.id || t.id === d.label);
+                    // Add connection count for top connectors
+                    if (topNode) return `${d.label} (${topNode.connections})`;
+                    return d.label;
+                })
+                .attr('font-size', d => {
+                    // Larger font for top connectors
+                    if (isTopConnector(d)) {
+                        const sizes = { 1: 15, 2: 13, 3: 12, 4: 12, 5: 11 };
+                        const topNode = topConnectors.find(t => t.id === d.id || t.id === d.label);
+                        return topNode ? sizes[topNode.rank] : 11;
+                    }
+                    return 11;
+                })
+                .attr('font-weight', d => {
+                    // Bold for top connectors
+                    if (isTopConnector(d)) return 700;
+                    return 500;
+                })
+                .attr('fill', d => {
+                    // Gold for top connectors
+                    if (isTopConnector(d)) return '#fbbf24';
+                    return '#e2e8f0';
+                })
+                .attr('text-anchor', 'middle')
+                .attr('dy', d => {
+                    // More spacing for larger nodes
+                    const size = getNodeSize(d);
+                    return -(size + 8);
+                })
+                .style('pointer-events', 'none')
+                .style('font-family', "'Mona Sans', sans-serif")
+                .style('text-shadow', '0 0 3px #0f172a, 0 0 5px #0f172a'); // Better readability
+
+            // Update positions on tick
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+
+                label
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y);
+            });
+
+            // After simulation stabilizes, focus on Lenny Rachitsky
+            simulation.on('end', () => {
+                const lenny = nodes.find(n => n.id === 'Lenny Rachitsky' || n.label === 'Lenny Rachitsky');
+                if (lenny) {
+                    console.log('Centering graph on Lenny Rachitsky');
+                    setTimeout(() => {
+                        focusNode(lenny);
+                        showNodeDetails(lenny);
+                    }, 500);
+                }
+            });
+        }
+
+        // Drag behavior
+        function drag(simulation) {
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+
+            return d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended);
+        }
+
+        // Show node details
+        function showNodeDetails(node) {
+            const topConnector = topConnectors.find(t => t.id === node.id || t.id === node.label);
+            let connectorBadge = '';
+            if (topConnector) {
+                connectorBadge = `
+                <div class="info-row">
+                    <div class="info-label">Rank</div>
+                    <div class="info-value"><span class="badge" style="background: #fbbf24; color: #0f172a;">Top ${topConnector.rank} Connector - ${topConnector.connections} connections</span></div>
+                </div>`;
+            }
+
+            const details = `
+                <div class="info-row">
+                    <div class="info-label">Entity</div>
+                    <div class="info-value"><strong>${node.label}</strong></div>
+                </div>
+                ${connectorBadge}
+                <div class="info-row">
+                    <div class="info-label">Type</div>
+                    <div class="info-value"><span class="badge">${node.type}</span></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Description</div>
+                    <div class="info-value">${node.description ? node.description.substring(0, 200) + '...' : 'No description'}</div>
+                </div>
+                ${node.file_path ? `
+                <div class="info-row">
+                    <div class="info-label">Source</div>
+                    <div class="info-value">${node.file_path}</div>
+                </div>
+                ` : ''}
+            `;
+
+            document.getElementById('node-details').innerHTML = details;
+            document.getElementById('node-info').style.display = 'block';
+        }
+
+        // Focus on a node
+        function focusNode(node) {
+            const transform = d3.zoomIdentity
+                .translate(svg.attr('width') / 2, svg.attr('height') / 2)
+                .scale(1.5)
+                .translate(-node.x, -node.y);
+
+            svg.transition().duration(750).call(zoom.transform, transform);
+        }
+
+        // Tooltip
+        function showTooltip(event, node) {
+            const tooltip = d3.select('#tooltip');
+            tooltip
+                .style('display', 'block')
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px')
+                .html(`<strong>${node.label}</strong><br><span style="color: #94a3b8">${node.type}</span>`);
+        }
+
+        function hideTooltip() {
+            d3.select('#tooltip').style('display', 'none');
+        }
+
+        // Search functionality
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            const resultsDiv = document.getElementById('search-results');
+
+            if (term.length < 2) {
+                g.selectAll('circle').attr('opacity', 1).attr('r', 10);
+                g.selectAll('text').attr('opacity', 1).attr('font-size', 11);
+                resultsDiv.style.display = 'none';
+                return;
+            }
+
+            // Find matches with scoring
+            const matches = nodes.filter(n =>
+                n.label.toLowerCase().includes(term) ||
+                n.description.toLowerCase().includes(term)
+            ).map(n => {
+                const labelLower = n.label.toLowerCase();
+                let score = 0;
+
+                // Exact match gets highest score
+                if (labelLower === term) score = 100;
+                // Starts with term gets high score
+                else if (labelLower.startsWith(term)) score = 50;
+                // Contains term gets base score
+                else if (labelLower.includes(term)) score = 10;
+                // Description match gets lowest score
+                else if (n.description.toLowerCase().includes(term)) score = 1;
+
+                return { node: n, score };
+            }).sort((a, b) => b.score - a.score); // Sort by score descending
+
+            const matchedNodes = matches.map(m => m.node);
+
+            // Update visual highlighting
+            g.selectAll('circle')
+                .attr('opacity', d => matchedNodes.includes(d) ? 1 : 0.15)
+                .attr('r', d => matchedNodes.includes(d) ? 14 : 10);
+
+            g.selectAll('text')
+                .attr('opacity', d => matchedNodes.includes(d) ? 1 : 0.2)
+                .attr('font-size', d => matchedNodes.includes(d) ? 13 : 11)
+                .attr('font-weight', d => matchedNodes.includes(d) ? 700 : 500);
+
+            // Show search results
+            if (matches.length > 0) {
+                const topMatch = matches[0].node;
+                const topConnector = topConnectors.find(t => t.id === topMatch.id || t.id === topMatch.label);
+                console.log('Search:', term, '→ Focusing on:', topMatch.label, '(ID:', topMatch.id, ')');
+
+                let connectorBadge = '';
+                if (topConnector) {
+                    connectorBadge = ` <span style="background: #fbbf24; color: #0f172a; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">TOP ${topConnector.rank}</span>`;
+                }
+
+                resultsDiv.style.display = 'block';
+                resultsDiv.innerHTML = `
+                    <strong>Found ${matches.length} match${matches.length > 1 ? 'es' : ''}</strong><br>
+                    Focusing on: <strong style="color: #667eea">${topMatch.label}</strong>${connectorBadge}
+                    ${matches.length > 1 ? `<br><small>+ ${matches.length - 1} other${matches.length > 2 ? 's' : ''}</small>` : ''}
+                `;
+
+                // Focus on the best match
+                focusNode(topMatch);
+                showNodeDetails(topMatch);
+            } else {
+                resultsDiv.style.display = 'block';
+                resultsDiv.innerHTML = '<em>No matches found</em>';
+            }
+        });
+
+        // Controls
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            const container = document.getElementById('graph-container');
+            const transform = d3.zoomIdentity
+                .translate(container.clientWidth / 2, container.clientHeight / 2)
+                .scale(1);
+            svg.transition().duration(750).call(zoom.transform, transform);
+            document.getElementById('node-info').style.display = 'none';
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-results').style.display = 'none';
+            g.selectAll('circle').attr('opacity', 1).attr('r', 10);
+            g.selectAll('text').attr('opacity', 1).attr('font-size', 11).attr('font-weight', 500);
+        });
+
+        document.getElementById('restart-sim').addEventListener('click', () => {
+            simulation.alpha(1).restart();
+        });
+
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            svg.transition().call(zoom.scaleBy, 1.3);
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            svg.transition().call(zoom.scaleBy, 0.7);
+        });
+
+        // Legend click handlers
+        function setupLegendClicks() {
+            document.querySelectorAll('.legend-item[data-person-id]').forEach(item => {
+                item.addEventListener('click', () => {
+                    const personId = item.getAttribute('data-person-id');
+                    console.log('Legend clicked:', personId);
+
+                    // Find the person in nodes
+                    const person = nodes.find(n => n.id === personId || n.label === personId);
+
+                    if (person) {
+                        console.log('Found person:', person.label);
+                        focusNode(person);
+                        showNodeDetails(person);
+
+                        // Visual feedback
+                        item.style.background = '#1e293b';
+                        setTimeout(() => {
+                            item.style.background = '';
+                        }, 300);
+                    } else {
+                        console.warn('Person not found in graph:', personId);
+                    }
+                });
+            });
+        }
+
+        // Load on page load
+        window.addEventListener('load', loadGraph);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (svg) {
+                const container = document.getElementById('graph-container');
+                svg.attr('width', container.clientWidth)
+                   .attr('height', container.clientHeight);
+            }
+        });
+    </script>
+</body>
+</html>
