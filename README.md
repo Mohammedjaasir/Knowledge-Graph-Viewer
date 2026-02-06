@@ -6,6 +6,10 @@
 
 ## 🌟 Live Demo
 
+
+https://github.com/user-attachments/assets/0f1e9628-ea8d-4651-8bdd-d8cb0fb97340
+
+
 - **Interactive Knowledge Graph**: Explore 544 people and their connections from Lenny's Podcast
 - **AI-Powered Q&A**: Ask questions about product management, growth, and leadership
 - **Beautiful UI**: Modern Streamlit interface with real-time search
